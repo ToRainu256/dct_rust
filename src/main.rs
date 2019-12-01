@@ -3,7 +3,7 @@ extern crate image;
 extern crate ndarray;
 extern crate num;
 extern crate rustdct;
-
+#[warn(unused_imports)]
 use image::{DynamicImage, GenericImageView};
 use ndarray::{arr2, Array, Array2};
 use rustdct::algorithm::type2and3_butterflies::Type2And3Butterfly8;
@@ -48,6 +48,26 @@ fn read_pic(fname: String) -> Array2<f64> {
     mat
 }
 
+fn trans_each_block(mut src_mat: Array2<f64>, trans_mat: Array2<f64>) -> Vec<Array2<f64>> {
+    let mut last: i32 = 0;
+    let mut range: Vec<i32> = vec![];
+    let n = trans_mat.nrows();
+    let h = src_mat.nrows();
+    let w = src_mat.ncols();
+    let mut trans_mat_T = trans_mat.slice(s![.., ..]).reversed_axes();
+    let mut transed_mat: Vec<Array2<f64>> = vec![];
+
+    for i in 0..h / n {
+        range.push(((i + 1) * n) as i32);
+        let block = src_mat
+            .slice_mut(s![last..range[i as usize], last..range[i as usize]])
+            .dot(&trans_mat);
+        transed_mat.push(block.slice(s![.., ..]).dot(&trans_mat));
+        last = range[i as usize];
+    }
+    transed_mat
+}
+
 pub fn main() {
     let mut mat = read_pic("./lenna256.bmp".to_string());
     let h = mat.rows();
@@ -56,21 +76,7 @@ pub fn main() {
     let mut last: i32 = 0;
     let mut range: Vec<i32> = vec![];
     let dct_mat = Array::from_vec(dct_vec(8)).into_shape((8, 8)).unwrap();
-    print!("{:?}", dct_mat);
-    for i in 0..h / 8 {
-        //println!("{}", (i + 1) * 8);
-        range.push(((i + 1) * 8) as i32);
-        println!("{:?}", last..range[i as usize]);
-        //println!(
-        //    "{:?}",
-        //    mat.slice_mut(s![last..range[i as usize], last..range[i as usize]])
-        //);
-        let block = mat.slice_mut(s![last..range[i as usize], last..range[i as usize]]);
-        let dct = dct_mat.slice(s![.., ..]);
-        let t_dct = (dct_mat.slice(s![.., ..])).reversed_axes();
-        block.dot(&dct);
-        //print!("{:?}", transed_mat);
-        last = range[i as usize];
-    }
-    println!("{:?}", mat);
+    let c = trans_each_block(mat, dct_mat);
+
+    println!("{:?}", c);
 }
