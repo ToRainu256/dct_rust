@@ -1,0 +1,11 @@
+[package]
+name = "dct_rust"
+version = "0.1.0"
+authors = ["ToRainu256 <torainu256@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+num = "0.1.27"
+image = '*'
+ndarray = '*'
+rustdct = '*'
