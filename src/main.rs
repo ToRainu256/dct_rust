@@ -13,18 +13,17 @@ use std::ops::Sub;
 use std::path::Path;
 use std::sync::Arc;
 
-fn c_k(n: u64) -> f64 {
-    if n == 0 {
-        return (1f64 / 2f64).sqrt();
-    } else {
-        return 1.0;
-    }
-}
-
-fn dct_vec(size: u64) -> Vec<f64> {
+fn dct_mat(size: u64) -> Array2<f64> {
     let N = size as f64;
     let mut dct_mat: Vec<f64> = vec![];
     let pi = std::f64::consts::FRAC_1_PI;
+    let c_k = |n| {
+        if n == 0 {
+            (1f64 / 2f64).sqrt()
+        } else {
+            1f64
+        }
+    };
     for i in 0..size as u64 {
         for j in 0..size as u64 {
             dct_mat.push(
@@ -33,7 +32,9 @@ fn dct_vec(size: u64) -> Vec<f64> {
         }
     }
 
-    dct_mat
+    Array::from_vec(dct_mat)
+        .into_shape((size as usize, size as usize))
+        .unwrap()
 }
 
 fn read_pic(fname: String) -> Array2<f64> {
@@ -54,7 +55,6 @@ fn trans_each_block(mut src_mat: Array2<f64>, trans_mat: Array2<f64>) -> Vec<Arr
     let n = trans_mat.nrows();
     let h = src_mat.nrows();
     let w = src_mat.ncols();
-    let mut trans_mat_T = trans_mat.slice(s![.., ..]).reversed_axes();
     let mut transed_mat: Vec<Array2<f64>> = vec![];
 
     for i in 0..h / n {
@@ -62,7 +62,7 @@ fn trans_each_block(mut src_mat: Array2<f64>, trans_mat: Array2<f64>) -> Vec<Arr
         let block = src_mat
             .slice_mut(s![last..range[i as usize], last..range[i as usize]])
             .dot(&trans_mat);
-        transed_mat.push(block.slice(s![.., ..]).dot(&trans_mat));
+        transed_mat.push(trans_mat.t().dot(&block.slice(s![.., ..])));
         last = range[i as usize];
     }
     transed_mat
@@ -75,7 +75,7 @@ pub fn main() {
     println!("{:?}", mat);
     let mut last: i32 = 0;
     let mut range: Vec<i32> = vec![];
-    let dct_mat = Array::from_vec(dct_vec(8)).into_shape((8, 8)).unwrap();
+    let dct_mat = dct_mat(8);
     let c = trans_each_block(mat, dct_mat);
 
     println!("{:?}", c);
